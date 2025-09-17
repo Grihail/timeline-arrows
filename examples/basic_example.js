@@ -25,111 +25,44 @@
       };
 
       // Generate some
-      const now = vis.moment()
-        .minutes(0)
-        .seconds(0)
-        .milliseconds(0);
-      const names = ["John", "Alston", "Lee", "Grant"];
-      const itemCount = 20;
+
       // create a data set with groups
-      const groups = new vis.DataSet();
-      for (let g = 0; g < names.length; g++) {
-        groups.add({ id: g, content: names[g] });
-      }
+      const groups = new vis.DataSet([
+        { id: 1, content: 'John' },
+        { id: 2, content: 'Alston' },
+        { id: 3, content: 'Lee' },
+        { id: 4, content: 'Grant' }
+      ]);
       // create a dataset with items
-      const items = new vis.DataSet();
-      for (let i = 0; i < itemCount; i++) {
-        const start = now.clone().add(Math.random() * 200, "hours");
-        const end = start + 100000000;
-        const group = Math.floor(Math.random() * names.length);
-        items.add({
-          id: i,
-          group: group,
-          content:
-            "item " +
-            i +
-            ' <span style="color:#97B0F8;">(' +
-            names[group] +
-            ")</span>",
-          start: start,
-          end: end,
-          //type: "box"
-        });
-      }
+      const items = new vis.DataSet([
+        { id: 1, group: 1, content: "item 1", start: "2014-06-12", end: "2014-07-14" },
+        { id: 2, group: 2, content: "item 2", start: "2014-07-01", end: "2014-08-03" },
+        { id: 3, group: 3, content: "item 3", start: "2014-05-18", end: "2014-06-20" },
+        { id: 15, group: 4, content: "item 15", start: "2014-08-05", end: "2014-09-07" },
+        { id: 5, group: 4, content: "item 5", start: "2014-09-10", end: "2014-10-12" },
+        { id: 6, group: 1, content: "item 6", start: "2014-04-28", end: "2014-05-30" },
+        { id: 7, group: 1, content: "item 7", start: "2014-10-15", end: "2014-11-17" },
+        { id: 8, group: 2, content: "item 8", start: "2014-11-03", end: "2014-12-05" },
+        { id: 16, group: 3, content: "item 16", start: "2014-12-20", end: "2015-01-22" }
+      ]);
       // Create visualization.
       const container = document.getElementById("visualization");
-      const timelinevis = new vis.Timeline(container, items, groups, options);
-
-
-
-
-
+      const timelinevis = new vis.Timeline(container, items, groups, options );
 
       /**
       *CREATING THE ARROWS 
       */    
+      const arrowsOptions = {
+        color: "#039E00"
+      };
       const dependency = [
-        {
-          id: 2,
-          id_item_1: 1,
-          id_item_2: 2,
-          title: 'Hello'   
-        },
-        {
-          id: 5,
-          id_item_1: 3,
-          id_item_2: 5 
-        },
-        {
-          id: 7,
-          id_item_1: 6,
-          id_item_2: 7,
-          title: 'Hola'   
-        },
-        {
-          id: 10,
-          id_item_1: 3,
-          id_item_2: 8
-        }
+        { id: 2, id_item_1: 1, id_item_2: 2, title: 'Hello', direction: 0, color: '#ff0000ff', line: 1 },
+        { id: 5, id_item_1: 3, id_item_2: 5, title: 'Hi', line: 1 },
+        { id: 7, id_item_1: 6, id_item_2: 7, title: 'Hola' },
+        { id: 10, id_item_1: 2, id_item_2: 8, direction: 2 },
+        { id: 13, id_item_1: 16, id_item_2: 15, title: 'I have been added', color: '#800080', direction: 0  }
       ];
 
-
-
- 
       // Create instance of Arrow for a timeline objetc and its denpedencies
-      const myArrow = new Arrow(timelinevis, dependency);
+      const myArrow = new Arrow(timelinevis, dependency, arrowsOptions);
 
-      
-
-      //Example of adding a new arrow (between items 15 and 16)
-      myArrow.addArrow(
-        {
-          id: 13,
-          id_item_1: 15,
-          id_item_2: 16,
-          title: 'I have been added'   
-        }
-      );
-
-
-      
-
-      /*ANOTHER FUNCTIONS (NO IMPORTANT)*/
-      const showVisibleItems = function () {
-        const a = timelinevis.getVisibleItems();
-        document.getElementById("visibleItemsContainer").innerHTML = ""
-        document.getElementById("visibleItemsContainer").innerHTML += a;
-      };
-      Window.showVisibleItems = showVisibleItems;
-
-      const showGroups = function (){
-        groups.forEach(function(group){
-          groups.update({id: group.id, visible: true});
-        })
-      };
-      Window.showGroups = showGroups;
-
-      const remove = function () {
-        myArrow.removeArrow(10);
-      }
-      Window.remove = remove;
