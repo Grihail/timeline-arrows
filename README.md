@@ -2,7 +2,7 @@
 
 Following the issue of vis https://github.com/almende/vis/issues/1699, and thanks to the comments of @frboyer and @JimmyCheng, I have created a class to easily draw lines to connect items in the vis Timeline module.
 
-![CapturaTime](https://user-images.githubusercontent.com/36993404/59111595-9d830600-8941-11e9-8cb8-8d7b72701a71.JPG)
+![CapturaTime](https://github.com/user-attachments/assets/a8b85ee1-d147-407e-8132-d749804362f3)
 
 
 ## Install & initialize
@@ -32,15 +32,18 @@ const myTimeline = new vis.Timeline(container, items, groups, options);
 
 And optionally:
 * title (insert a text and it will show a title if you hover the mouse in the arrow)
+* color (set individual arrow color, overrides the global color option)
+* direction (arrow direction: 0=no arrows, 1=forward only, 2=backward only, 3=both directions)
+* line (line type: 0=solid line, 1=dashed line)
 
 For instance:
 
 ```javascript
 var arrowsSpecs = [
     { id: 2, id_item_1: 1, id_item_2: 2 },
-    { id: 5, id_item_1: 3, id_item_2: 5, title:'Hello!!!' },
-    { id: 7, id_item_1: 6, id_item_2: 7 },
-    { id: 10, id_item_1: 3, id_item_2: 8, title:'I am a title!!!' }
+    { id: 5, id_item_1: 3, id_item_2: 5, title:'Hello!!!', color: '#ff0000', direction: 1 },
+    { id: 7, id_item_1: 6, id_item_2: 7, line: 1 },
+    { id: 10, id_item_1: 3, id_item_2: 8, title:'I am a title!!!', color: '#00ff00', direction: 3, line: 1 }
 ];
 ```
 
@@ -85,6 +88,41 @@ This method takes two arguments, `el` - the arrow - and `title` - the content of
 
 **hideWhenItemsNotVisible** - defaults to `true`.
 When you zoom the timeline and both items go out of the screen. You can set if the arrow is still visible. By default, the arrow hides, but you can change it setting this option to `false`.
+
+## Arrow Properties
+
+Each arrow can have the following individual properties:
+
+**color** - Optional. Set individual arrow color (including the arrowhead). This overrides the global color option.
+Example: `color: '#ff0000'`
+
+**direction** - Optional. Controls arrow direction. Defaults to `1`.
+
+* `0` = No arrows (simple line connection)
+* `1` = Forward arrow only (from item_1 to item_2)
+* `2` = Backward arrow only (from item_2 to item_1)
+* `3` = Both directions (arrows on both ends)
+
+**line** - Optional. Controls line style. Defaults to `0`.
+
+* `0` = Solid line (default)
+* `1` = Dashed line
+
+**title** - Optional. Text that appears on hover.
+
+Example with all properties:
+
+```javascript
+{ 
+    id: 1, 
+    id_item_1: 3, 
+    id_item_2: 8, 
+    title: 'Custom arrow', 
+    color: '#00ff00', 
+    direction: 3, 
+    line: 1 
+}
+```
 
 ## Methods
 

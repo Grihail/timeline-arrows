@@ -40,6 +40,9 @@
  * @property {VisIdType} id_item_1 start timeline item id
  * @property {VisIdType} id_item_2 end timeline item id
  * @property {string} [title] optional arrow title
+ * @property {string} [color] optional arrow color
+ * @property {number} [direction] arrow direction: 0=no arrows, 1=forward only, 2=backward only, 3=both directions
+ * @property {number} [line] line type: 0=solid (default), 1=dashed
  */
 
 /**
@@ -78,16 +81,8 @@ export default class Arrow {
         /** @private @type {boolean} if true, arrows will be hidden when both items is not visible due to timeline zoom  */
         this._hideWhenItemsNotVisible = options?.hideWhenItemsNotVisible ?? true;
 
-        /** @private @type {SVGMarkerElement} */
-        this._arrowHead = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "marker"
-        );
-        /** @private @type {SVGPathElement} */
-        this._arrowHeadPath = document.createElementNS(
-            "http://www.w3.org/2000/svg",
-            "path"
-        );
+        /** @private @type {Map<string, string>} map of color to marker id */
+        this._colorMarkers = new Map();
         
         this._dependency = [...dependencies];
 
@@ -111,23 +106,9 @@ export default class Arrow {
         this._svg.style.pointerEvents = "none"; // To click through, if we decide to put it above other elements.
         this._timeline.dom.center.appendChild(this._svg);
 
-        //Configure the arrowHead
-        this._arrowHead.setAttribute("id", this._arrowHeadId);
-        this._arrowHead.setAttribute("viewBox", "-10 -5 10 10");
-        this._arrowHead.setAttribute("refX", "-7");
-        this._arrowHead.setAttribute("refY", "0");
-        this._arrowHead.setAttribute("markerUnits", "strokeWidth");
-        this._arrowHead.setAttribute("markerWidth", "3");
-        this._arrowHead.setAttribute("markerHeight", "3");
-        this._arrowHead.setAttribute("orient", "auto-start-reverse");
-        //Configure the path of the arrowHead (arrowHeadPath)
-        this._arrowHeadPath.setAttribute("d", "M 0 0 L -10 -5 L -7.5 0 L -10 5 z");
-        this._arrowHeadPath.style.fill = this._arrowsColor;
-        this._arrowHead.appendChild(this._arrowHeadPath);
-        this._svg.appendChild(this._arrowHead);
         //Create paths for the started dependency array
         for (let i = 0; i < this._dependency.length; i++) {
-            this._createPath();
+            this._createPath(this._dependency[i].color, this._dependency[i].line);
         }
         
         //NOTE: We hijack the on "changed" event to draw the arrows.
@@ -136,19 +117,68 @@ export default class Arrow {
         });
 
     }
+
+    /** @private */
+    _getOrCreateMarker(color) {
+        const arrowColor = color || this._arrowsColor;
+        
+        if (!this._colorMarkers.has(arrowColor)) {
+            const markerId = `arrowhead-${arrowColor.replace('#', '')}-${Math.random().toString(36).substring(2)}`;
+            
+            const arrowHead = document.createElementNS("http://www.w3.org/2000/svg", "marker");
+            arrowHead.setAttribute("id", markerId);
+            arrowHead.setAttribute("viewBox", "-10 -5 10 10");
+            arrowHead.setAttribute("refX", "-7");
+            arrowHead.setAttribute("refY", "0");
+            arrowHead.setAttribute("markerUnits", "strokeWidth");
+            arrowHead.setAttribute("markerWidth", "3");
+            arrowHead.setAttribute("markerHeight", "3");
+            arrowHead.setAttribute("orient", "auto-start-reverse");
+            
+            const arrowHeadPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            arrowHeadPath.setAttribute("d", "M 0 0 L -10 -5 L -7.5 0 L -10 5 z");
+            arrowHeadPath.style.fill = arrowColor;
+            
+            arrowHead.appendChild(arrowHeadPath);
+            this._svg.appendChild(arrowHead);
+            
+            this._colorMarkers.set(arrowColor, markerId);
+        }
+        
+        return this._colorMarkers.get(arrowColor);
+    }
     
     /** @private */
-    _createPath(){
+    _createPath(color, lineType){
         //Add a new path to array dependencyPath and to svg
         let somePath = document.createElementNS(
             "http://www.w3.org/2000/svg",
             "path"
           );
           somePath.setAttribute("d", "M 0 0");
-          somePath.style.stroke = this._arrowsColor;
+          somePath.style.stroke = color || this._arrowsColor;
           somePath.style.strokeWidth = this._arrowsStrokeWidth + "px";
           somePath.style.fill = "none";
           somePath.style.pointerEvents = "auto";
+          
+          // Устанавливаем тип линии
+          const line = lineType !== undefined ? lineType : 0; // По умолчанию сплошная линия
+          if (line === 0) {
+              // Тип 0: Сплошная линия (по умолчанию)
+              somePath.style.strokeDasharray = "none";
+          } else if (line === 1) {
+              // Тип 1: Пунктирная линия
+              somePath.style.strokeDasharray = "7,5";
+          }
+          // Здесь можно добавить дополнительные типы линий:
+          // } else if (line === 2) {
+          //     // Тип 2: Точечная линия
+          //     somePath.style.strokeDasharray = "2,3";
+          // } else if (line === 3) {
+          //     // Тип 3: Штрих-пунктир
+          //     somePath.style.strokeDasharray = "10,5,2,5";
+          // }
+          
           this._dependencyPath.push(somePath);
           this._svg.appendChild(somePath);
     }
@@ -215,10 +245,48 @@ export default class Arrow {
 
             var curveLen = item_1.height * 2; // Length of straight Bezier segment out of the item.
 
+            const markerId = this._getOrCreateMarker(dep.color);
+            const direction = dep.direction !== undefined ? dep.direction : 1; // По умолчанию направление вперед
+
+            // Определяем какие маркеры нужно установить в зависимости от direction
+            let markerStart = "";
+            let markerEnd = "";
+            
+            if (direction === 0) {
+                // Без стрелок
+                markerStart = "";
+                markerEnd = "";
+            } else if (direction === 1) {
+                // Направление вперед (по умолчанию)
+                if (this._followRelationships && item_2.mid_x < item_1.mid_x) {
+                    markerStart = `url(#${markerId})`;
+                    markerEnd = "";
+                } else {
+                    markerStart = "";
+                    markerEnd = `url(#${markerId})`;
+                }
+            } else if (direction === 2) {
+                // Направление назад
+                if (this._followRelationships && item_2.mid_x < item_1.mid_x) {
+                    markerStart = "";
+                    markerEnd = `url(#${markerId})`;
+                } else {
+                    markerStart = `url(#${markerId})`;
+                    markerEnd = "";
+                }
+            } else if (direction === 3) {
+                // Обе стороны
+                markerStart = `url(#${markerId})`;
+                markerEnd = `url(#${markerId})`;
+            }
+
             if (this._followRelationships && item_2.mid_x < item_1.mid_x) {
-                item_2.right += 10; // Space for the arrowhead.
-                this._dependencyPath[index].setAttribute("marker-start", `url(#${this._arrowHeadId})`);
-                this._dependencyPath[index].setAttribute("marker-end", "");
+                // Добавляем отступы только там, где есть стрелки
+                if (markerStart !== "") item_2.right += 10; // Space for the arrowhead at start
+                if (markerEnd !== "") item_1.left -= 10; // Space for the arrowhead at end
+                
+                this._dependencyPath[index].setAttribute("marker-start", markerStart);
+                this._dependencyPath[index].setAttribute("marker-end", markerEnd);
                 this._dependencyPath[index].setAttribute(
                     "d",
                     "M " +
@@ -239,9 +307,12 @@ export default class Arrow {
                     item_1.mid_y
                 );
             } else {
-                item_2.left -= 10; // Space for the arrowhead.
-                this._dependencyPath[index].setAttribute("marker-end", `url(#${this._arrowHeadId})`);
-                this._dependencyPath[index].setAttribute("marker-start", "");
+                // Добавляем отступы только там, где есть стрелки
+                if (markerEnd !== "") item_2.left -= 10; // Space for the arrowhead at end
+                if (markerStart !== "") item_1.right += 10; // Space for the arrowhead at start
+                
+                this._dependencyPath[index].setAttribute("marker-end", markerEnd);
+                this._dependencyPath[index].setAttribute("marker-start", markerStart);
                 this._dependencyPath[index].setAttribute(
                     "d",
                     "M " +
@@ -304,7 +375,7 @@ export default class Arrow {
      */
     addArrow(dep) {
         this._dependency.push(dep);
-        this._createPath();
+        this._createPath(dep.color, dep.line);
         this._timeline.redraw();
     }
 
@@ -332,19 +403,21 @@ export default class Arrow {
      * Función que recibe el id de una flecha y la elimina.
      * @param {ArrowIdType} id arrow id
      */
-    removeArrow(id) {
+     removeArrow(id) {
         const index = this._dependency.findIndex(dep => dep.id === id);
 
         if (index >= 0) {
+            // Get the path element from our specific array before modifying the arrays
+            const pathToRemove = this._dependencyPath[index];
 
-            //var list = document.getElementsByTagName("path"); //FALTA QUE ESTA SELECCION LA HAGA PARA EL DOM DEL TIMELINE INSTANCIADO!!!!
-            const list = document.querySelectorAll("#" + this._timeline.dom.container.id + " path");
+            // Remove the SVG element from the DOM
+            if (pathToRemove && pathToRemove.parentNode) {
+                pathToRemove.parentNode.removeChild(pathToRemove);
+            }
 
-            this._dependency.splice(index, 1); //Elimino del array dependency
-            this._dependencyPath.splice(index, 1); //Elimino del array dependencyPath
-            
-            list[index + 1].parentNode?.removeChild(list[index + 1]); //Lo elimino del dom
-            
+            // Now, remove the arrow from internal arrays
+            this._dependency.splice(index, 1);
+            this._dependencyPath.splice(index, 1);
         }
     }
 
