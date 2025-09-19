@@ -403,19 +403,21 @@ export default class Arrow {
      * Función que recibe el id de una flecha y la elimina.
      * @param {ArrowIdType} id arrow id
      */
-    removeArrow(id) {
+     removeArrow(id) {
         const index = this._dependency.findIndex(dep => dep.id === id);
 
         if (index >= 0) {
+            // Get the path element from our specific array before modifying the arrays
+            const pathToRemove = this._dependencyPath[index];
 
-            //var list = document.getElementsByTagName("path"); //FALTA QUE ESTA SELECCION LA HAGA PARA EL DOM DEL TIMELINE INSTANCIADO!!!!
-            const list = document.querySelectorAll("#" + this._timeline.dom.container.id + " path");
+            // Remove the SVG element from the DOM
+            if (pathToRemove && pathToRemove.parentNode) {
+                pathToRemove.parentNode.removeChild(pathToRemove);
+            }
 
-            this._dependency.splice(index, 1); //Elimino del array dependency
-            this._dependencyPath.splice(index, 1); //Elimino del array dependencyPath
-            
-            list[index + 1].parentNode?.removeChild(list[index + 1]); //Lo elimino del dom
-            
+            // Now, remove the arrow from internal arrays
+            this._dependency.splice(index, 1);
+            this._dependencyPath.splice(index, 1);
         }
     }
 
