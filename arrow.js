@@ -43,6 +43,8 @@
  * @property {string} [color] optional arrow color
  * @property {number} [direction] arrow direction: 0=no arrows, 1=forward only, 2=backward only, 3=both directions
  * @property {number} [line] line type: 0=solid (default), 1=dashed
+ * @property {string} [align] if 'center', line is straight
+ * @property {number} [type] line shape: 0=bezier(default), 1=straight, 2=cornered
  */
 
 /**
@@ -235,103 +237,254 @@ export default class Arrow {
             }
         }
 
-        if ( (groupOf_1_isVisible && groupOf_2_isVisible) && (oneItemVisible || !this._hideWhenItemsNotVisible) && (bothItemsExist)) {
+        if ((groupOf_1_isVisible && groupOf_2_isVisible) && (oneItemVisible || !this._hideWhenItemsNotVisible) && (bothItemsExist)) {
             var item_1 = this._getItemPos(this._timeline.itemSet.items[dep.id_item_1]);
             var item_2 = this._getItemPos(this._timeline.itemSet.items[dep.id_item_2]);
+            // Удалена перестановка item_1 и item_2
 
-            if (!this._followRelationships && item_2.mid_x < item_1.mid_x) {
-                [item_1, item_2] = [item_2, item_1]; // As demo, we put an arrow between item 0 and item1, from the one that is more on left to the one more on right.
-            }
-
-            var curveLen = item_1.height * 2; // Length of straight Bezier segment out of the item.
-
+            var curveLen = item_1.height * 2;
             const markerId = this._getOrCreateMarker(dep.color);
-            const direction = dep.direction !== undefined ? dep.direction : 1; // По умолчанию направление вперед
-
-            // Определяем какие маркеры нужно установить в зависимости от direction
+            const direction = dep.direction !== undefined ? dep.direction : 1;
             let markerStart = "";
             let markerEnd = "";
             
+            // direction logic
             if (direction === 0) {
-                // Без стрелок
                 markerStart = "";
                 markerEnd = "";
             } else if (direction === 1) {
-                // Направление вперед (по умолчанию)
-                if (this._followRelationships && item_2.mid_x < item_1.mid_x) {
-                    markerStart = `url(#${markerId})`;
-                    markerEnd = "";
-                } else {
-                    markerStart = "";
-                    markerEnd = `url(#${markerId})`;
-                }
+                // стрелка всегда у второго события
+                markerStart = "";
+                markerEnd = `url(#${markerId})`;
             } else if (direction === 2) {
-                // Направление назад
-                if (this._followRelationships && item_2.mid_x < item_1.mid_x) {
-                    markerStart = "";
-                    markerEnd = `url(#${markerId})`;
-                } else {
-                    markerStart = `url(#${markerId})`;
-                    markerEnd = "";
-                }
+                // стрелка всегда у первого события
+                markerStart = `url(#${markerId})`;
+                markerEnd = "";
             } else if (direction === 3) {
-                // Обе стороны
                 markerStart = `url(#${markerId})`;
                 markerEnd = `url(#${markerId})`;
             }
 
-            if (this._followRelationships && item_2.mid_x < item_1.mid_x) {
-                // Добавляем отступы только там, где есть стрелки
-                if (markerStart !== "") item_2.right += 10; // Space for the arrowhead at start
-                if (markerEnd !== "") item_1.left -= 10; // Space for the arrowhead at end
-                
-                this._dependencyPath[index].setAttribute("marker-start", markerStart);
-                this._dependencyPath[index].setAttribute("marker-end", markerEnd);
-                this._dependencyPath[index].setAttribute(
-                    "d",
-                    "M " +
-                    item_2.right +
-                    " " +
-                    item_2.mid_y +
-                    " C " +
-                    (item_2.right + curveLen) +
-                    " " +
-                    item_2.mid_y +
-                    " " +
-                    (item_1.left - curveLen) +
-                    " " +
-                    item_1.mid_y +
-                    " " +
-                    item_1.left +
-                    " " +
-                    item_1.mid_y
-                );
+            // --- Path построение ---
+            let pathStr;
+            const lineType = dep.type !== undefined ? dep.type : 0;
+            if (lineType === 1) {
+                // Прямая линия
+                const x1 = item_1.mid_x;
+                const y1 = item_1.mid_y;
+                const x2 = item_2.mid_x;
+                const y2 = item_2.mid_y;
+
+                function getRectIntersection(rect, x0, y0, x1, y1, offset = 0) {
+                    // Вектор направления
+                    const dx = x1 - x0;
+                    const dy = y1 - y0;
+                    let candidates = [];
+                    // Левая
+                    if (dx !== 0) {
+                        const t = (rect.left - x0) / dx;
+                        if (t > 0 && t < 1) {
+                            const y = y0 + t * dy;
+                            if (y >= rect.top && y <= rect.bottom) candidates.push({ x: rect.left, y, t });
+                        }
+                    }
+                    // Правая
+                    if (dx !== 0) {
+                        const t = (rect.right - x0) / dx;
+                        if (t > 0 && t < 1) {
+                            const y = y0 + t * dy;
+                            if (y >= rect.top && y <= rect.bottom) candidates.push({ x: rect.right, y, t });
+                        }
+                    }
+                    // Верхняя
+                    if (dy !== 0) {
+                        const t = (rect.top - y0) / dy;
+                        if (t > 0 && t < 1) {
+                            const x = x0 + t * dx;
+                            if (x >= rect.left && x <= rect.right) candidates.push({ x, y: rect.top, t });
+                        }
+                    }
+                    // Нижняя
+                    if (dy !== 0) {
+                        const t = (rect.bottom - y0) / dy;
+                        if (t > 0 && t < 1) {
+                            const x = x0 + t * dx;
+                            if (x >= rect.left && x <= rect.right) candidates.push({ x, y: rect.bottom, t });
+                        }
+                    }
+                    // Выбираем ближайшую к центру точку
+                    if (candidates.length === 0) return { x: x0, y: y0 };
+                    candidates.sort((a, b) => Math.hypot(a.x - x0, a.y - y0) - Math.hypot(b.x - x0, b.y - y0));
+                    let pt = candidates[0];
+                    // Добавляем отступ, если требуется
+                    if (offset > 0) {
+                        const norm = Math.hypot(dx, dy);
+                        if (norm > 0) {
+                            pt.x += (dx / norm) * offset;
+                            pt.y += (dy / norm) * offset;
+                        }
+                    }
+                    return pt;
+                }
+                // Определяем, нужен ли отступ на концах
+                let offset1 = 0, offset2 = 0;
+                if (direction === 1) offset2 = 10; // стрелка только на втором конце
+                if (direction === 2) offset1 = 10; // стрелка только на первом конце
+                if (direction === 3) { offset1 = 10; offset2 = 10; } // стрелки на обоих концах
+                // Находим точки пересечения
+                const pt1 = getRectIntersection(item_1, x1, y1, x2, y2, offset1); // из центра первого к центру второго
+                const pt2 = getRectIntersection(item_2, x2, y2, x1, y1, offset2); // из центра второго к центру первого
+                pathStr = `M ${pt1.x} ${pt1.y} L ${pt2.x} ${pt2.y}`;
+            } else if (lineType === 2) {
+                // Корнерная линия (2 или 4 изгиба)
+                const offset = 10;
+                let start, end, sign;
+                if (item_1.mid_x < item_2.mid_x) {
+                    start = { x: item_1.right, y: item_1.mid_y };
+                    end = { x: item_2.left, y: item_2.mid_y };
+                    sign = 1;
+                } else {
+                    start = { x: item_1.left, y: item_1.mid_y };
+                    end = { x: item_2.right, y: item_2.mid_y };
+                    sign = -1;
+                }
+                // Отступы для стрелок
+                if (direction === 1 || direction === 3) end.x -= 10 * sign;
+                if (direction === 2 || direction === 3) start.x += 10 * sign;
+
+                // Проверка на "внахлёст"
+                const overlap = (item_1.left < item_2.right && item_1.right > item_2.left);
+                if (overlap) {
+                    // 4 изгиба
+                    const xA = start.x + offset * sign;
+                    const xB = end.x - offset * sign;
+                    const midY = (start.y + end.y) / 2;
+                    pathStr = `M ${start.x} ${start.y} L ${xA} ${start.y} L ${xA} ${midY} L ${xB} ${midY} L ${xB} ${end.y} L ${end.x} ${end.y}`;
+                } else {
+                    // 2 изгиба
+                    const xA = start.x + offset * sign;
+                    pathStr = `M ${start.x} ${start.y} L ${xA} ${start.y} L ${xA} ${end.y} L ${end.x} ${end.y}`;
+                }
+            } else if (dep.align === 'center') {
+                // --- Исправленный алгоритм: линия между ближайшими к центру точками пересечения ---
+                const x1 = item_1.mid_x;
+                const y1 = item_1.mid_y;
+                const x2 = item_2.mid_x;
+                const y2 = item_2.mid_y;
+
+                function getRectIntersection(rect, x0, y0, x1, y1, offset = 0) {
+                    // Вектор направления
+                    const dx = x1 - x0;
+                    const dy = y1 - y0;
+                    let candidates = [];
+                    // Левая
+                    if (dx !== 0) {
+                        const t = (rect.left - x0) / dx;
+                        if (t > 0 && t < 1) {
+                            const y = y0 + t * dy;
+                            if (y >= rect.top && y <= rect.bottom) candidates.push({ x: rect.left, y, t });
+                        }
+                    }
+                    // Правая
+                    if (dx !== 0) {
+                        const t = (rect.right - x0) / dx;
+                        if (t > 0 && t < 1) {
+                            const y = y0 + t * dy;
+                            if (y >= rect.top && y <= rect.bottom) candidates.push({ x: rect.right, y, t });
+                        }
+                    }
+                    // Верхняя
+                    if (dy !== 0) {
+                        const t = (rect.top - y0) / dy;
+                        if (t > 0 && t < 1) {
+                            const x = x0 + t * dx;
+                            if (x >= rect.left && x <= rect.right) candidates.push({ x, y: rect.top, t });
+                        }
+                    }
+                    // Нижняя
+                    if (dy !== 0) {
+                        const t = (rect.bottom - y0) / dy;
+                        if (t > 0 && t < 1) {
+                            const x = x0 + t * dx;
+                            if (x >= rect.left && x <= rect.right) candidates.push({ x, y: rect.bottom, t });
+                        }
+                    }
+                    // Выбираем ближайшую к центру точку
+                    if (candidates.length === 0) return { x: x0, y: y0 };
+                    candidates.sort((a, b) => Math.hypot(a.x - x0, a.y - y0) - Math.hypot(b.x - x0, b.y - y0));
+                    let pt = candidates[0];
+                    // Добавляем отступ, если требуется
+                    if (offset > 0) {
+                        const norm = Math.hypot(dx, dy);
+                        if (norm > 0) {
+                            pt.x += (dx / norm) * offset;
+                            pt.y += (dy / norm) * offset;
+                        }
+                    }
+                    return pt;
+                }
+                // Определяем, нужен ли отступ на концах
+                let offset1 = 0, offset2 = 0;
+                if (direction === 1) offset2 = 10; // стрелка только на втором конце
+                if (direction === 2) offset1 = 10; // стрелка только на первом конце
+                if (direction === 3) { offset1 = 10; offset2 = 10; } // стрелки на обоих концах
+                // Находим точки пересечения
+                const pt1 = getRectIntersection(item_1, x1, y1, x2, y2, offset1); // из центра первого к центру второго
+                const pt2 = getRectIntersection(item_2, x2, y2, x1, y1, offset2); // из центра второго к центру первого
+                pathStr = `M ${pt1.x} ${pt1.y} L ${pt2.x} ${pt2.y}`;
             } else {
-                // Добавляем отступы только там, где есть стрелки
-                if (markerEnd !== "") item_2.left -= 10; // Space for the arrowhead at end
-                if (markerStart !== "") item_1.right += 10; // Space for the arrowhead at start
-                
+                // Bezier (по умолчанию)
+                if (this._followRelationships && item_2.mid_x < item_1.mid_x) {
+                    if (markerStart !== "") item_2.right += 10;
+                    if (markerEnd !== "") item_1.left -= 10;
+                    pathStr =
+                        "M " +
+                        item_2.right +
+                        " " +
+                        item_2.mid_y +
+                        " C " +
+                        (item_2.right + curveLen) +
+                        " " +
+                        item_2.mid_y +
+                        " " +
+                        (item_1.left - curveLen) +
+                        " " +
+                        item_1.mid_y +
+                        " " +
+                        item_1.left +
+                        " " +
+                        item_1.mid_y;
+                } else {
+                    if (markerEnd !== "") item_2.left -= 10;
+                    if (markerStart !== "") item_1.right += 10;
+                    pathStr =
+                        "M " +
+                        item_1.right +
+                        " " +
+                        item_1.mid_y +
+                        " C " +
+                        (item_1.right + curveLen) +
+                        " " +
+                        item_1.mid_y +
+                        " " +
+                        (item_2.left - curveLen) +
+                        " " +
+                        item_2.mid_y +
+                        " " +
+                        item_2.left +
+                        " " +
+                        item_2.mid_y;
+                }
+            }
+            // --- Конец построения path ---
+            if (this._followRelationships && item_2.mid_x < item_1.mid_x) {
+                this._dependencyPath[index].setAttribute("marker-start", markerStart);
+                this._dependencyPath[index].setAttribute("marker-end", markerEnd);
+                this._dependencyPath[index].setAttribute("d", pathStr);
+            } else {
                 this._dependencyPath[index].setAttribute("marker-end", markerEnd);
                 this._dependencyPath[index].setAttribute("marker-start", markerStart);
-                this._dependencyPath[index].setAttribute(
-                    "d",
-                    "M " +
-                    item_1.right +
-                    " " +
-                    item_1.mid_y +
-                    " C " +
-                    (item_1.right + curveLen) +
-                    " " +
-                    item_1.mid_y +
-                    " " +
-                    (item_2.left - curveLen) +
-                    " " +
-                    item_2.mid_y +
-                    " " +
-                    item_2.left +
-                    " " +
-                    item_2.mid_y
-                );
+                this._dependencyPath[index].setAttribute("d", pathStr);
             }
 
             // Adding the title if property title has been added in the dependency
@@ -403,27 +556,25 @@ export default class Arrow {
      * Función que recibe el id de una flecha y la elimina.
      * @param {ArrowIdType} id arrow id
      */
-     removeArrow(id) {
+    removeArrow(id) {
         const index = this._dependency.findIndex(dep => dep.id === id);
 
         if (index >= 0) {
-            // Get the path element from our specific array before modifying the arrays
-            const pathToRemove = this._dependencyPath[index];
 
-            // Remove the SVG element from the DOM
-            if (pathToRemove && pathToRemove.parentNode) {
-                pathToRemove.parentNode.removeChild(pathToRemove);
-            }
+            //var list = document.getElementsByTagName("path"); //FALTA QUE ESTA SELECCION LA HAGA PARA EL DOM DEL TIMELINE INSTANCIADO!!!!
+            const list = document.querySelectorAll("#" + this._timeline.dom.container.id + " path");
 
-            // Now, remove the arrow from internal arrays
-            this._dependency.splice(index, 1);
-            this._dependencyPath.splice(index, 1);
+            this._dependency.splice(index, 1); //Elimino del array dependency
+            this._dependencyPath.splice(index, 1); //Elimino del array dependencyPath
+            
+            list[index + 1].parentNode?.removeChild(list[index + 1]); //Lo elimino del dom
+            
         }
     }
 
     /**
      * Finds all arrows related to one view item and removes them all.
-     * Función que recibe el id de un item y elimina la flecha.
+     * Funcция que recibe el id de un item y elimina la flecha.
      * @param {VisIdType} id view item id
      * @returns {(ArrowIdType)[]} list of removed arrow ids
      */
