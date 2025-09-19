@@ -4,8 +4,8 @@
  *
  * Class to easily draw lines to connect items in the vis Timeline module.
  *
- * @version 4.6.0
- * @date    2024-03-24
+ * @version 4.7.1
+ * @date    2025-09-19
  *
  * @copyright (c) Javi Domenech (javdome@gmail.com) 
  *
@@ -83,7 +83,7 @@ export default class Arrow {
 
         /** @private @type {Map<string, string>} map of color to marker id */
         this._colorMarkers = new Map();
-        
+
         this._dependency = [...dependencies];
 
         /** @private @type {SVGPathElement[]} */
@@ -94,7 +94,7 @@ export default class Arrow {
 
         this._initialize();
     }
-  
+
     _initialize() {
         //Configures the SVG layer and add it to timeline
         this._svg.style.position = "absolute";
@@ -110,7 +110,7 @@ export default class Arrow {
         for (let i = 0; i < this._dependency.length; i++) {
             this._createPath(this._dependency[i].color, this._dependency[i].line);
         }
-        
+
         //NOTE: We hijack the on "changed" event to draw the arrows.
         this._timeline.on("changed", () => {
             this._drawDependencies();
@@ -121,10 +121,10 @@ export default class Arrow {
     /** @private */
     _getOrCreateMarker(color) {
         const arrowColor = color || this._arrowsColor;
-        
+
         if (!this._colorMarkers.has(arrowColor)) {
             const markerId = `arrowhead-${arrowColor.replace('#', '')}-${Math.random().toString(36).substring(2)}`;
-            
+
             const arrowHead = document.createElementNS("http://www.w3.org/2000/svg", "marker");
             arrowHead.setAttribute("id", markerId);
             arrowHead.setAttribute("viewBox", "-10 -5 10 10");
@@ -134,56 +134,56 @@ export default class Arrow {
             arrowHead.setAttribute("markerWidth", "3");
             arrowHead.setAttribute("markerHeight", "3");
             arrowHead.setAttribute("orient", "auto-start-reverse");
-            
+
             const arrowHeadPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
             arrowHeadPath.setAttribute("d", "M 0 0 L -10 -5 L -7.5 0 L -10 5 z");
             arrowHeadPath.style.fill = arrowColor;
-            
+
             arrowHead.appendChild(arrowHeadPath);
             this._svg.appendChild(arrowHead);
-            
+
             this._colorMarkers.set(arrowColor, markerId);
         }
-        
+
         return this._colorMarkers.get(arrowColor);
     }
-    
+
     /** @private */
-    _createPath(color, lineType){
+    _createPath(color, lineType) {
         //Add a new path to array dependencyPath and to svg
         let somePath = document.createElementNS(
             "http://www.w3.org/2000/svg",
             "path"
-          );
-          somePath.setAttribute("d", "M 0 0");
-          somePath.style.stroke = color || this._arrowsColor;
-          somePath.style.strokeWidth = this._arrowsStrokeWidth + "px";
-          somePath.style.fill = "none";
-          somePath.style.pointerEvents = "auto";
-          
-          // Устанавливаем тип линии
-          const line = lineType !== undefined ? lineType : 0; // По умолчанию сплошная линия
-          if (line === 0) {
-              // Тип 0: Сплошная линия (по умолчанию)
-              somePath.style.strokeDasharray = "none";
-          } else if (line === 1) {
-              // Тип 1: Пунктирная линия
-              somePath.style.strokeDasharray = "7,5";
-          }
-          // Здесь можно добавить дополнительные типы линий:
-          // } else if (line === 2) {
-          //     // Тип 2: Точечная линия
-          //     somePath.style.strokeDasharray = "2,3";
-          // } else if (line === 3) {
-          //     // Тип 3: Штрих-пунктир
-          //     somePath.style.strokeDasharray = "10,5,2,5";
-          // }
-          
-          this._dependencyPath.push(somePath);
-          this._svg.appendChild(somePath);
+        );
+        somePath.setAttribute("d", "M 0 0");
+        somePath.style.stroke = color || this._arrowsColor;
+        somePath.style.strokeWidth = this._arrowsStrokeWidth + "px";
+        somePath.style.fill = "none";
+        somePath.style.pointerEvents = "auto";
+
+        // Set line type
+        const line = lineType !== undefined ? lineType : 0; // Default: solid line
+        if (line === 0) {
+            // Type 0: Solid line (default)
+            somePath.style.strokeDasharray = "none";
+        } else if (line === 1) {
+            // Type 1: Dashed line
+            somePath.style.strokeDasharray = "7,5";
+        }
+        // Here you can add additional line types:
+        // } else if (line === 2) {
+        //     // Type 2: Dotted line
+        //     somePath.style.strokeDasharray = "2,3";
+        // } else if (line === 3) {
+        //     // Type 3: Dash-dot line
+        //     somePath.style.strokeDasharray = "10,5,2,5";
+        // }
+
+        this._dependencyPath.push(somePath);
+        this._svg.appendChild(somePath);
     }
 
-    
+
     /** @private */
     _drawDependencies() {
         //Create paths for the started dependency array
@@ -202,40 +202,40 @@ export default class Arrow {
         //if( (typeof this._timeline.itemsData._data[dep.id_item_1] !== "undefined") && (typeof this._timeline.itemsData._data[dep.id_item_2] !== "undefined") ) {
 
         const bothItemsExist = (this._timeline.itemsData.get(dep.id_item_1) !== null) && (this._timeline.itemsData.get(dep.id_item_2) !== null);
-        
+
         //Checks if at least one item is visible in screen
-        let oneItemVisible = false; //Iniciamos a false
+        let oneItemVisible = false; //Initialize as false
         //Checks if the groups of items are both visible
-        let groupOf_1_isVisible = false; //Iniciamos a false
-        let groupOf_2_isVisible = false; //Iniciamos a false
-        if (bothItemsExist) {    
+        let groupOf_1_isVisible = false; //Initialize as false
+        let groupOf_2_isVisible = false; //Initialize as false
+        if (bothItemsExist) {
             const visibleItems = this._timeline.getVisibleItems();
-            for (let k = 0; k < visibleItems.length ; k++) {
+            for (let k = 0; k < visibleItems.length; k++) {
                 if (dep.id_item_1 == visibleItems[k]) oneItemVisible = true;
                 if (dep.id_item_2 == visibleItems[k]) oneItemVisible = true;
             }
-        
-            
-            
-            let groupOf_1 = this._timeline.itemsData.get(dep.id_item_1).group; //let groupOf_1 = items.get(dep.id_item_1).group;
-            
-            let groupOf_2 = this._timeline.itemsData.get(dep.id_item_2).group; //let groupOf_2 = items.get(dep.id_item_2).group;
-                       
-            if ( this._timeline.groupsData.get(groupOf_1) ) groupOf_1_isVisible = true;
 
-            if ( this._timeline.groupsData.get(groupOf_2) ) groupOf_2_isVisible = true;
+
+
+            let groupOf_1 = this._timeline.itemsData.get(dep.id_item_1).group; //let groupOf_1 = items.get(dep.id_item_1).group;
+
+            let groupOf_2 = this._timeline.itemsData.get(dep.id_item_2).group; //let groupOf_2 = items.get(dep.id_item_2).group;
+
+            if (this._timeline.groupsData.get(groupOf_1)) groupOf_1_isVisible = true;
+
+            if (this._timeline.groupsData.get(groupOf_2)) groupOf_2_isVisible = true;
 
 
             // If groups are null then they are not visible.
-            if (groupOf_1 == null){
+            if (groupOf_1 == null) {
                 groupOf_1_isVisible = false;
             }
-            if (groupOf_2 == null){
+            if (groupOf_2 == null) {
                 groupOf_2_isVisible = false;
             }
         }
 
-        if ( (groupOf_1_isVisible && groupOf_2_isVisible) && (oneItemVisible || !this._hideWhenItemsNotVisible) && (bothItemsExist)) {
+        if ((groupOf_1_isVisible && groupOf_2_isVisible) && (oneItemVisible || !this._hideWhenItemsNotVisible) && (bothItemsExist)) {
             var item_1 = this._getItemPos(this._timeline.itemSet.items[dep.id_item_1]);
             var item_2 = this._getItemPos(this._timeline.itemSet.items[dep.id_item_2]);
 
@@ -246,18 +246,18 @@ export default class Arrow {
             var curveLen = item_1.height * 2; // Length of straight Bezier segment out of the item.
 
             const markerId = this._getOrCreateMarker(dep.color);
-            const direction = dep.direction !== undefined ? dep.direction : 1; // По умолчанию направление вперед
+            const direction = dep.direction !== undefined ? dep.direction : 1; // Default: forward direction
 
-            // Определяем какие маркеры нужно установить в зависимости от direction
+            // Determine which markers to set depending on direction
             let markerStart = "";
             let markerEnd = "";
-            
+
             if (direction === 0) {
-                // Без стрелок
+                // No arrows
                 markerStart = "";
                 markerEnd = "";
             } else if (direction === 1) {
-                // Направление вперед (по умолчанию)
+                // Forward direction (default)
                 if (this._followRelationships && item_2.mid_x < item_1.mid_x) {
                     markerStart = `url(#${markerId})`;
                     markerEnd = "";
@@ -266,7 +266,7 @@ export default class Arrow {
                     markerEnd = `url(#${markerId})`;
                 }
             } else if (direction === 2) {
-                // Направление назад
+                // Backward direction
                 if (this._followRelationships && item_2.mid_x < item_1.mid_x) {
                     markerStart = "";
                     markerEnd = `url(#${markerId})`;
@@ -275,16 +275,16 @@ export default class Arrow {
                     markerEnd = "";
                 }
             } else if (direction === 3) {
-                // Обе стороны
+                // Both sides
                 markerStart = `url(#${markerId})`;
                 markerEnd = `url(#${markerId})`;
             }
 
             if (this._followRelationships && item_2.mid_x < item_1.mid_x) {
-                // Добавляем отступы только там, где есть стрелки
+                // Add spacing only where there are arrows
                 if (markerStart !== "") item_2.right += 10; // Space for the arrowhead at start
                 if (markerEnd !== "") item_1.left -= 10; // Space for the arrowhead at end
-                
+
                 this._dependencyPath[index].setAttribute("marker-start", markerStart);
                 this._dependencyPath[index].setAttribute("marker-end", markerEnd);
                 this._dependencyPath[index].setAttribute(
@@ -307,10 +307,10 @@ export default class Arrow {
                     item_1.mid_y
                 );
             } else {
-                // Добавляем отступы только там, где есть стрелки
+                // Add spacing only where there are arrows
                 if (markerEnd !== "") item_2.left -= 10; // Space for the arrowhead at end
                 if (markerStart !== "") item_1.right += 10; // Space for the arrowhead at start
-                
+
                 this._dependencyPath[index].setAttribute("marker-end", markerEnd);
                 this._dependencyPath[index].setAttribute("marker-start", markerStart);
                 this._dependencyPath[index].setAttribute(
@@ -347,8 +347,8 @@ export default class Arrow {
 
     }
 
-    /** @private Función que recibe in Item y devuelve la posición en pantalla del item. */
-    _getItemPos (item) {
+    /** @private Function that receives an Item and returns its screen position */
+    _getItemPos(item) {
         let left_x = item.left;
         let top_y;
         if (this._timeline.options.orientation.item == "top") {
@@ -397,13 +397,13 @@ export default class Arrow {
     getIdArrows() {
         return this._dependency.map(dep => dep.id);
     }
-    
+
     /**
      * Finds arrow with the given id and removes it.
-     * Función que recibe el id de una flecha y la elimina.
+     * Function that receives an arrow id and removes it.
      * @param {ArrowIdType} id arrow id
      */
-     removeArrow(id) {
+    removeArrow(id) {
         const index = this._dependency.findIndex(dep => dep.id === id);
 
         if (index >= 0) {
@@ -423,18 +423,18 @@ export default class Arrow {
 
     /**
      * Finds all arrows related to one view item and removes them all.
-     * Función que recibe el id de un item y elimina la flecha.
+     * Function that receives an item id and removes the arrow.
      * @param {VisIdType} id view item id
      * @returns {(ArrowIdType)[]} list of removed arrow ids
      */
     removeItemArrows(id) {
         let listOfRemovedArrows = [];
         for (let i = 0; i < this._dependency.length; i++) {
-            if ( (this._dependency[i].id_item_1 == id) || (this._dependency[i].id_item_2 == id) ) {
+            if ((this._dependency[i].id_item_1 == id) || (this._dependency[i].id_item_2 == id)) {
                 listOfRemovedArrows.push(this._dependency[i].id);
                 this.removeArrow(this._dependency[i].id);
                 i--;
-            } 
+            }
         }
         return listOfRemovedArrows;
     }
@@ -447,14 +447,14 @@ export default class Arrow {
      */
     removeArrowsBetweenItems(itemId1, itemId2) {
         let listOfRemovedArrows = [];
-        let ArrowsToDelete = this._dependency.filter(dep => (dep.id_item_1 == itemId1 && dep.id_item_2 == itemId2) )
+        let ArrowsToDelete = this._dependency.filter(dep => (dep.id_item_1 == itemId1 && dep.id_item_2 == itemId2))
         ArrowsToDelete.forEach(dep => {
             listOfRemovedArrows.push(dep.id);
             this.removeArrow(dep.id)
         })
         return listOfRemovedArrows
     }
-    
+
 
     /**
      * For backward compatibility
@@ -464,4 +464,4 @@ export default class Arrow {
         this.removeItemArrows(id);
     }
 
-  }
+}
