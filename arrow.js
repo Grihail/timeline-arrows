@@ -204,40 +204,15 @@ export default class Arrow {
         //if( (typeof this._timeline.itemsData._data[dep.id_item_1] !== "undefined") && (typeof this._timeline.itemsData._data[dep.id_item_2] !== "undefined") ) {
 
         const bothItemsExist = (this._timeline.itemsData.get(dep.id_item_1) !== null) && (this._timeline.itemsData.get(dep.id_item_2) !== null);
-        
-        //Checks if at least one item is visible in screen
-        let oneItemVisible = false; //Iniciamos a false
-        //Checks if the groups of items are both visible
-        let groupOf_1_isVisible = false; //Iniciamos a false
-        let groupOf_2_isVisible = false; //Iniciamos a false
-        if (bothItemsExist) {    
+        let oneItemVisible = false;
+        if (bothItemsExist) {
             const visibleItems = this._timeline.getVisibleItems();
             for (let k = 0; k < visibleItems.length ; k++) {
                 if (dep.id_item_1 == visibleItems[k]) oneItemVisible = true;
                 if (dep.id_item_2 == visibleItems[k]) oneItemVisible = true;
             }
-        
-            
-            
-            let groupOf_1 = this._timeline.itemsData.get(dep.id_item_1).group; //let groupOf_1 = items.get(dep.id_item_1).group;
-            
-            let groupOf_2 = this._timeline.itemsData.get(dep.id_item_2).group; //let groupOf_2 = items.get(dep.id_item_2).group;
-                       
-            if ( this._timeline.groupsData.get(groupOf_1) ) groupOf_1_isVisible = true;
-
-            if ( this._timeline.groupsData.get(groupOf_2) ) groupOf_2_isVisible = true;
-
-
-            // If groups are null then they are not visible.
-            if (groupOf_1 == null){
-                groupOf_1_isVisible = false;
-            }
-            if (groupOf_2 == null){
-                groupOf_2_isVisible = false;
-            }
         }
-
-        if ((groupOf_1_isVisible && groupOf_2_isVisible) && (oneItemVisible || !this._hideWhenItemsNotVisible) && (bothItemsExist)) {
+        if ((oneItemVisible || !this._hideWhenItemsNotVisible) && bothItemsExist) {
             var item_1 = this._getItemPos(this._timeline.itemSet.items[dep.id_item_1]);
             var item_2 = this._getItemPos(this._timeline.itemSet.items[dep.id_item_2]);
             // Удалена перестановка item_1 и item_2
