@@ -219,9 +219,11 @@ export default class Arrow {
             // Для стрелок без специальных параметров (type: 0, без align) возвращаем старое поведение
             const arrowType = dep.type !== undefined ? dep.type : 0;
             const isDefaultArrow = arrowType === 0 && !dep.align;
+            let swapped = false;
             
             if (isDefaultArrow && !this._followRelationships && item_2.mid_x < item_1.mid_x) {
                 [item_1, item_2] = [item_2, item_1]; // Перестановка для стандартных стрелок
+                swapped = true;
             }
 
             var curveLen = item_1.height * 2;
@@ -236,12 +238,22 @@ export default class Arrow {
                 markerEnd = "";
             } else if (direction === 1) {
                 // стрелка всегда у второго события
-                markerStart = "";
-                markerEnd = `url(#${markerId})`;
+                if (isDefaultArrow && swapped) {
+                    markerStart = `url(#${markerId})`;
+                    markerEnd = "";
+                } else {
+                    markerStart = "";
+                    markerEnd = `url(#${markerId})`;
+                }
             } else if (direction === 2) {
                 // стрелка всегда у первого события
-                markerStart = `url(#${markerId})`;
-                markerEnd = "";
+                if (isDefaultArrow && swapped) {
+                    markerStart = "";
+                    markerEnd = `url(#${markerId})`;
+                } else {
+                    markerStart = `url(#${markerId})`;
+                    markerEnd = "";
+                }
             } else if (direction === 3) {
                 markerStart = `url(#${markerId})`;
                 markerEnd = `url(#${markerId})`;
