@@ -215,7 +215,14 @@ export default class Arrow {
         if ((oneItemVisible || !this._hideWhenItemsNotVisible) && bothItemsExist) {
             var item_1 = this._getItemPos(this._timeline.itemSet.items[dep.id_item_1]);
             var item_2 = this._getItemPos(this._timeline.itemSet.items[dep.id_item_2]);
-            // Удалена перестановка item_1 и item_2
+
+            // Для стрелок без специальных параметров (type: 0, без align) возвращаем старое поведение
+            const arrowType = dep.type !== undefined ? dep.type : 0;
+            const isDefaultArrow = arrowType === 0 && !dep.align;
+            
+            if (isDefaultArrow && !this._followRelationships && item_2.mid_x < item_1.mid_x) {
+                [item_1, item_2] = [item_2, item_1]; // Перестановка для стандартных стрелок
+            }
 
             var curveLen = item_1.height * 2;
             const markerId = this._getOrCreateMarker(dep.color);
@@ -242,8 +249,7 @@ export default class Arrow {
 
             // --- Path построение ---
             let pathStr;
-            const lineType = dep.type !== undefined ? dep.type : 0;
-            if (lineType === 1) {
+            if (arrowType === 1) {
                 // Прямая линия
                 const x1 = item_1.mid_x;
                 const y1 = item_1.mid_y;
@@ -310,7 +316,7 @@ export default class Arrow {
                 const pt1 = getRectIntersection(item_1, x1, y1, x2, y2, offset1); // из центра первого к центру второго
                 const pt2 = getRectIntersection(item_2, x2, y2, x1, y1, offset2); // из центра второго к центру первого
                 pathStr = `M ${pt1.x} ${pt1.y} L ${pt2.x} ${pt2.y}`;
-            } else if (lineType === 2) {
+            } else if (arrowType === 2) {
                 const offset = 10;
                 let start, end, sign;
                 if (item_1.mid_x < item_2.mid_x) {
